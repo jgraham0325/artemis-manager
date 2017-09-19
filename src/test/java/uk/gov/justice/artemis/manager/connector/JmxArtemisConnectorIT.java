@@ -1,6 +1,7 @@
 package uk.gov.justice.artemis.manager.connector;
 
 import static java.util.Arrays.asList;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
@@ -112,5 +113,22 @@ public class JmxArtemisConnectorIT {
 
     }
 
+    @Test
+    public void shouldReprocessMessageOntoOriginalQueue() throws Exception {
+        final String queue = "DLQ";
 
+        cleanQueue(queue);
+
+        putInQueue(queue, "{\"key1\":\"value123\"}", "origQueueO1");
+        putInQueue(queue, "{\"key1\":\"valueBB\"}", "origQueueO2");
+
+        final List<MessageData> messageData = jmxArtemisConnector.messagesOf("localhost", "3000", "0.0.0.0", queue);
+
+        final long reprocessedMessages = jmxArtemisConnector.reprocess("localhost", "3000", "0.0.0.0", queue, asList(messageData.get(0).getMsgId(), messageData.get(1).getMsgId()).iterator());
+
+        final List<MessageData> messageDataAfter = jmxArtemisConnector.messagesOf("localhost", "3000", "0.0.0.0", queue);
+
+        assertThat(reprocessedMessages, is(2L));
+        assertThat(messageDataAfter, is(empty()));
+    }
 }
